@@ -137,9 +137,9 @@ python scripts/cal_bbox_region.py
 
 Ovelay GT bounding box on GT image
 
-'''
+```
 python scripts/cal_gt_bbox.py
-'''
+```
 
 Calculate oveall image bounding box vs GT bounding box (worst and basic baseline)
 
