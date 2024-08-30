@@ -96,6 +96,13 @@ sh train.sh
 
 ## For + I2AM
 
+Assume that there is a COCO val2017 dataset.
+First, you have to prepare the custom detection dataset using make_dataset.py 
+
+```
+python make_dataset.py
+```
+
 ### Additional Testing 1: Inference for one sample
 
 Assume that there are sample images (image, mask, ref) in output_images directory. Automatically, generates attribution maps in results dir using ./scripts/hook.py. We don't use plms sampler but use DDIM.
