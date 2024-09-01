@@ -367,10 +367,10 @@ def main():
                     mask_tensor = torch.from_numpy(mask)
                     inpaint_image = image_tensor*mask_tensor
                     test_model_kwargs={}
-                    test_model_kwargs['inpaint_mask']=mask_tensor.to(device)
-                    test_model_kwargs['inpaint_image']=inpaint_image.to(device)
+                    test_model_kwargs['inpaint_mask']=mask_tensor.to(device, non_blocking=True)
+                    test_model_kwargs['inpaint_image']=inpaint_image.to(device, non_blocking=True)
 
-                    ref_tensor=ref_tensor.to(device)
+                    ref_tensor=ref_tensor.to(device, non_blocking=True)
                     
                     uc = None
                     if opt.scale != 1.0:
@@ -473,7 +473,7 @@ def main():
                         hook.make_images(input_image, cloth, attention_maps, save_dir, f"{example_img_idx}")
                         
                     import gc
-
+                    del img_p, ref_p, mask, image_tensor, ref_tensor, mask_tensor, inpaint_image, hook
                     # For each iteration end
                     torch.cuda.empty_cache()
                     gc.collect()

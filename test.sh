@@ -53,7 +53,7 @@ python inference.py \
 python inference.py --outdir results --config configs/v1.yaml --ckpt checkpoints/model.ckpt --image_path output_images/images/image_4.jpg --mask_path output_images/masks/mask_4.png --reference_path output_images/reference_images/reference_4.jpg --seed 321 --scale 5
 
 # 위의 코드로 생성된 attribution map으로 bbox 만들고 IOU계산
-python scripts/cal_bbox_region.py 
+python scripts/cal_bbox_region_rect.py 
 
 
 # dir 단위로 attribution map 생성, inference_i2am.py

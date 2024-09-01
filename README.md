@@ -131,6 +131,10 @@ python inference_i2am.py --config configs/v1.yaml --ckpt checkpoints/model.ckpt 
 
 For detection task, PBE + I2AM generates attribution maps and then creates bounding box in ./i2am/overlay via cv2. Finally, calculates IOU.
 
+- Baseline model들은 기존 dataset의 bbox info를 그대로 사용해도 되지만, PBE의 경우 image를 $512 \times 512$로 resize해야 되기 때문에 bbox도 image size에 맞춰서 조정해야 한다. 따라서 PBE는 bbox_info의 adjusted_bbox dictionary를 baseline model은 bbox dictionary를 사용한다.
+
+- 또한, attribution map은 colormap=jet으로 저장했기 때문에 gray scale 이미지로 바로 load하는 것이 아니라 jet color map을 이용해서 색상 값을 원래 값으로 변환해야 한다. (cal_bbox_region_rect.py에 구현되어 있음)
+
 ```
 python scripts/cal_bbox_region.py 
 ```
@@ -150,3 +154,28 @@ python call_bbox_as_overall_img.py
 ### Detection Framework using I2AM
 
 
+### Baseline Model 
+
+1. Overall Image: 전체 이미지를 bounding box로 보고 계산 
+
+```
+python ./scripts/cal_bbox_as_overall_img.py
+```
+
+2. Random bbox: 이미지의 30~50%를 차지하는 bbox를 생성해서 IOU 계산
+
+```
+python ./scripts/cal_random_bbox.py
+```
+
+3. GT bbox: ground truth bbox를 그리는 script
+
+```
+python ./scripts/cal_gt_bbox.py
+```
+
+4. I2AM bbox: I2AM을 이용한 bounding box IOU 계산
+
+```
+python ./scripts/cal_bbox_region_rect.py
+```

@@ -2,6 +2,8 @@ import json
 import numpy as np
 import cv2
 import os
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 def bbox_area(bbox):
     """Calculate the area of a bounding box."""
@@ -43,32 +45,41 @@ def load_json(file_path):
         data = json.load(file)
     return data
 
-def set_edge_to_zero(binary_mask, edge_width=1):
-    # 이미지 복사 (원본 이미지를 수정하지 않기 위해)
-    mask_with_edges = binary_mask.copy()
-    
-    # 이미지의 크기 가져오기
-    img_height, img_width = binary_mask.shape
-    
-    # 가장자리 영역을 0으로 설정
-    mask_with_edges[:edge_width, :] = 0                 # 상단 가장자리
-    mask_with_edges[-edge_width:, :] = 0                # 하단 가장자리
-    mask_with_edges[:, :edge_width] = 0                 # 좌측 가장자리
-    mask_with_edges[:, -edge_width:] = 0                # 우측 가장자리
-    
-    return mask_with_edges
-
 def load_attention_map(image_path):
-    """Load attention map and convert to binary mask."""
-    attention_map = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    """Load attention map with jet colormap, convert to binary mask."""
+    # 1. 이미지를 컬러로 불러오기
+    image = plt.imread(image_path)
+
+    # jet 컬러 맵을 사용하여 색상 값을 원래 값으로 변환
+    jet = cm.get_cmap('jet')
+    norm = plt.Normalize(vmin=0, vmax=1)
     
-    #Threshold를 설정합니다. (예: 상위 10%의 값들을 관심 영역으로 간주)
-    threshold_value = np.percentile(attention_map, 60)  # 상위 40%의 값을 기준으로 threshold 설정
-    _, binary_mask = cv2.threshold(attention_map, threshold_value, 255, cv2.THRESH_BINARY)
-    
-    binary_mask = set_edge_to_zero(binary_mask, edge_width=50)
-    
-    #Apply morphological operations to clean up the mask
+    def get_value_from_color(color):
+        """Convert color from jet colormap to corresponding value."""
+        norm_color = np.array(color[:3])
+        values = np.linspace(0, 1, jet.N)
+        colormap_colors = jet(values)[:, :3]
+        diffs = np.sqrt(np.sum((colormap_colors - norm_color) ** 2, axis=1))
+        closest_index = np.argmin(diffs)
+        return values[closest_index]
+
+    def image_to_values(image):
+        """Convert the colormap image to value map."""
+        values = np.zeros((image.shape[0], image.shape[1]))
+        for i in range(image.shape[0]):
+            for j in range(image.shape[1]):
+                color = image[i, j]
+                values[i, j] = get_value_from_color(color)
+        return values
+
+    # 이미지에서 값을 추출
+    values = image_to_values(image)
+
+    # 2. 이진화 (예: 상위 40%의 값들을 관심 영역으로 간주)
+    threshold_value = np.percentile(values, 65)  # 상위 35%의 값을 기준으로 threshold 설정
+    binary_mask = (values > threshold_value).astype(np.uint8) * 255
+
+    # 3. 형태학적 연산을 적용하여 마스크를 정제
     kernel = np.ones((5, 5), np.uint8)
     binary_mask = cv2.morphologyEx(binary_mask, cv2.MORPH_OPEN, kernel)
     binary_mask = cv2.morphologyEx(binary_mask, cv2.MORPH_CLOSE, kernel)
@@ -84,24 +95,6 @@ def compute_overlap(binary_map, bounding_box):
     # 겹치는 영역에서 1인 픽셀의 개수를 계산합니다
     overlap = np.sum(cropped_binary_map == 255)
     return overlap
-
-def compute_centroid_distance(contour, bounding_box):
-    # Calculate the centroid of the contour
-    M = cv2.moments(contour)
-    if M["m00"] != 0:
-        cX = int(M["m10"] / M["m00"])
-        cY = int(M["m01"] / M["m00"])
-    else:
-        cX, cY = 0, 0
-
-    # Calculate the centroid of the bounding box
-    x, y, w, h = bounding_box
-    bbox_cX = x + w // 2
-    bbox_cY = y + h // 2
-
-    # Distance between centroids
-    distance = np.sqrt((cX - bbox_cX) ** 2 + (cY - bbox_cY) ** 2)
-    return distance
 
 def get_bounding_coords(contour):
     rect = cv2.minAreaRect(contour)
@@ -134,7 +127,7 @@ def bbox_from_mask(binary_mask):
     best_contour = None
     for contour in contours:
         bounding_box = cv2.boundingRect(contour)
-        #overlap = compute_centroid_distance(contour, bounding_box)
+        #bounding_box, box = get_bounding_coords(contour)
         overlap = compute_overlap(binary_mask, bounding_box)
         if overlap > max_overlap:
             max_overlap = overlap
@@ -183,7 +176,7 @@ def process_image_and_compare(json_file, attention_map_path, original_image_path
 
     # Process each bbox in the JSON
     for entry in bbox_data:
-        bbox = entry["bbox"]
+        bbox = entry["adjusted_bbox"]
         category_name = entry["category_name"]
         
         # Compute IOU between the bbox and the target bbox
@@ -213,8 +206,8 @@ def process_directory(bbox_info_dir, attention_maps_dir, images_dir, output_over
         if os.path.exists(attention_map_path) and os.path.exists(generated_image_path):
             iou = process_image_and_compare(json_file_path, attention_map_path, generated_image_path, output_overlay_dir, index)
             if iou is not None:
-                if iou >= 0.00001:
-                    all_ious.append(iou)
+                #if iou >= 0.00001:
+                all_ious.append(iou)
         else:
             pass
             #print(f"Missing corresponding files for index {index}")

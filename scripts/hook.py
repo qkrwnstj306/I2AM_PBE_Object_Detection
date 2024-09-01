@@ -61,7 +61,7 @@ class CrossAttentionHook(nn.Module):
             resized_attention_maps = cv2.applyColorMap(np.uint8(resized_attention_maps*255), cv2.COLORMAP_JET)
             
             heat_map = cv2.addWeighted(input_image, 0.7, resized_attention_maps, 0.5, 0)
-            
+
             attention_maps = attention_maps.cpu().numpy()
             attention_maps = 1.0 - attention_maps 
             attention_maps[attention_maps <= 0.4] = 0
